@@ -1,0 +1,15 @@
+{
+  "name": "vwa-backendserver",
+  "version": "1.0.0",
+  "description": "Der Backend-Server, der Dinge mit Authentication regelt -> Sessions, Shop, Geld, etc..",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mysql": "^2.18.1"
+  }
+}
