@@ -5,10 +5,12 @@ const fs = require("fs");
 
 const app = express();
 const port = 3001;
+const success = "SUCCESS";
 const try_buy_error = "ERROR: USERNAME DOES NOT EXIST OR NOT ENOUGH BALANCE";
 const username_not_exist = "ERROR: USERNAME DOES NOT EXIST";
 const session_update_error = "ERROR: SESSION TOKEN COULD NOT BE UPDATED";
 const session_time_invalid = "ERROR: SESSION TIME IS INVALID";
+const unexpected_error = "UNEXPECTED ERROR";
 const max_session_time_in_hours = 24
 
 let connParams = JSON.parse(fs.readFileSync("./conn.json"));
