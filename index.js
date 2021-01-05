@@ -251,7 +251,7 @@ app.get("/maxSessionTime", function (req, res) {
 	res.send("T" + max_session_time_in_hours);
 });
 
-app.listen(port, '127.0.0.1', () => {
+app.listen(port, '0.0.0.0', () => {
 	console.log(`BackendServer listening on port ${port}.`);
 });
 
