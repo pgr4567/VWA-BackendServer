@@ -84,11 +84,12 @@ app.get("/removeItem", function (req, res) {
 		Object.keys(result).forEach(function (key) {
 			var row = result[key];
 			let items = []
-			for (let i in row.items.split(";")) {
-				if (i == item) {
+			let old = row.items.split(";");
+			for (let i = 0; i < old.length; i++ ) {
+				if (old[i] == item) {
 					continue;
 				}
-				items.push(i);
+				items.push(old[i]);
 			}
 			let newItems = items.join(";");
 			con.query(
