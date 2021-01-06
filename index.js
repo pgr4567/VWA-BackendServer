@@ -11,14 +11,14 @@ const username_not_exist = "ERROR: USERNAME DOES NOT EXIST";
 const session_update_error = "ERROR: SESSION TOKEN COULD NOT BE UPDATED";
 const session_time_invalid = "ERROR: SESSION TIME IS INVALID";
 const unexpected_error = "UNEXPECTED ERROR";
-const max_session_time_in_hours = 24
+const max_session_time_in_hours = 24;
 
 let connParams = JSON.parse(fs.readFileSync("./conn.json"));
 var con = mysql.createConnection({
 	host: connParams.host,
 	user: connParams.user,
 	password: connParams.password,
-	database: connParams.database
+	database: connParams.database,
 });
 
 app.get("/tryBuy", function (req, res) {
@@ -71,46 +71,50 @@ app.get("/removeItem", function (req, res) {
 		return;
 	}
 
-	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
-			return;
-		}
-		if (Object.keys(result).length == 0) {
-			res.send(username_not_exist);
-			return;
-		}
-		Object.keys(result).forEach(function (key) {
-			var row = result[key];
-			let items = []
-			let old = row.items.split(";");
-			for (let i = 0; i < old.length; i++ ) {
-				if (old[i] == item) {
-					continue;
-				}
-				items.push(old[i]);
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
 			}
-			let newItems = items.join(";");
-			con.query(
-				"UPDATE players SET items = ? WHERE username = ?",
-				[newItems, username],
-				function (err, result) {
-					if (err) {
-						console.log(err);
-						res.send(unexpected_error);
-						return;
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let items = [];
+				let old = row.items.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == item) {
+						continue;
 					}
-					if (result.affectedRows == 0) {
-						res.send(username_not_exist);
-						return;
-					}
-					res.send(success);
-					return;
+					items.push(old[i]);
 				}
-			);
-		});
-	});
+				let newItems = items.join(";");
+				con.query(
+					"UPDATE players SET items = ? WHERE username = ?",
+					[newItems, username],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
 });
 
 app.get("/removeAllItems", function (req, res) {
@@ -191,22 +195,26 @@ app.get("/getInventory", function (req, res) {
 		return;
 	}
 
-	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
-			return;
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send(row.items);
+				return;
+			});
 		}
-		if (Object.keys(result).length == 0) {
-			res.send(username_not_exist);
-			return;
-		}
-		Object.keys(result).forEach(function (key) {
-			var row = result[key];
-			res.send(row.items);
-			return;
-		});
-	});
+	);
 });
 
 app.get("/getMoney", function (req, res) {
@@ -222,22 +230,26 @@ app.get("/getMoney", function (req, res) {
 		return;
 	}
 
-	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
-			return;
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send("$" + row.money);
+				return;
+			});
 		}
-		if (Object.keys(result).length == 0) {
-			res.send(username_not_exist);
-			return;
-		}
-		Object.keys(result).forEach(function (key) {
-			var row = result[key];
-			res.send("$" + row.money);
-			return;
-		});
-	});
+	);
 });
 
 app.get("/getSessionToken", function (req, res) {
@@ -253,28 +265,31 @@ app.get("/getSessionToken", function (req, res) {
 		return;
 	}
 
-	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
-			return;
-		}
-		if (Object.keys(result).length == 0) {
-			res.send(username_not_exist);
-			return;
-		}
-		Object.keys(result).forEach(function (key) {
-			var row = result[key];
-			if (isValidSessionTime(row.session_time)) {
-				res.send(row.session);
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
 				return;
 			}
-			else {
-				res.send(session_time_invalid);
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
 				return;
 			}
-		});
-	});
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				if (isValidSessionTime(row.session_time)) {
+					res.send(row.session);
+					return;
+				} else {
+					res.send(session_time_invalid);
+					return;
+				}
+			});
+		}
+	);
 });
 
 app.get("/getSessionTokenTime", function (req, res) {
@@ -290,22 +305,26 @@ app.get("/getSessionTokenTime", function (req, res) {
 		return;
 	}
 
-	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
-			return;
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send(row.session_time);
+				return;
+			});
 		}
-		if (Object.keys(result).length == 0) {
-			res.send(username_not_exist);
-			return;
-		}
-		Object.keys(result).forEach(function (key) {
-			var row = result[key];
-			res.send(row.session_time);
-			return;
-		});
-	});
+	);
 });
 
 app.get("/generateSessionToken", function (req, res) {
@@ -322,26 +341,193 @@ app.get("/generateSessionToken", function (req, res) {
 	}
 
 	let sessionToken = generateSessionToken();
-	con.query("UPDATE players SET session = ?, session_time = NOW() WHERE username = ?", [sessionToken, username], function (err, result) {
-		if (err) {
-			console.log(err);
-			res.send(unexpected_error);
+	con.query(
+		"UPDATE players SET session = ?, session_time = NOW() WHERE username = ?",
+		[sessionToken, username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (result.affectedRows == 0) {
+				res.send(session_update_error);
+				return;
+			}
+			res.send(success);
 			return;
 		}
-		if (result.affectedRows == 0) {
-			res.send(session_update_error);
-			return;
-		}
-		res.send(success);
-		return;
-	});
+	);
 });
 
 app.get("/maxSessionTime", function (req, res) {
 	res.send("T" + max_session_time_in_hours);
 });
 
-app.listen(port, '0.0.0.0', () => {
+app.get("/getRank", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+
+	if (username == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send("R" + row.rank);
+				return;
+			});
+		}
+	);
+});
+
+app.get("/setRank", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let rank = req.query.rank;
+
+	if (username == undefined || rank == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"UPDATE players SET rank = ? WHERE username = ?",
+		[rank, username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (result.affectedRows == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/addFriend", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	friend += ";";
+
+	con.query(
+		"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
+		[friend, username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (result.affectedRows == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/removeFriend", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friends = [];
+				let old = row.friends.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == friend) {
+						continue;
+					}
+					friends.push(old[i]);
+				}
+				let newFriends = friends.join(";");
+				con.query(
+					"UPDATE players SET friends = ? WHERE username = ?",
+					[newFriends, username],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
+});
+
+app.listen(port, "0.0.0.0", () => {
 	console.log(`BackendServer listening on port ${port}.`);
 });
 
@@ -349,9 +535,9 @@ function generateSessionToken() {
 	return crypto.randomBytes(24).toString("base64");
 }
 
-function isValidSessionTime (date) {
-    const time = 1000 * 60 * 60 * max_session_time_in_hours;
-    const lastTime = Date.now() - time;
+function isValidSessionTime(date) {
+	const time = 1000 * 60 * 60 * max_session_time_in_hours;
+	const lastTime = Date.now() - time;
 
-    return date > lastTime;
+	return date > lastTime;
 }
