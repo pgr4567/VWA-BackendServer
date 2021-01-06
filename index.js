@@ -28,13 +28,15 @@ app.get("/tryBuy", function (req, res) {
 	}
 
 	let username = req.query.username;
-	let item = req.query.item + ";";
+	let item = req.query.item;
 	let price = parseInt(req.query.price);
 
 	if (username == undefined || item == undefined || price == undefined) {
 		res.send(unexpected_error);
 		return;
 	}
+
+	item += ";";
 
 	con.query(
 		"UPDATE players SET money = money - ?, items = CONCAT(IFNULL(items, ''), ?) WHERE username = ? AND money >= ?",
@@ -47,6 +49,93 @@ app.get("/tryBuy", function (req, res) {
 			}
 			if (result.affectedRows == 0) {
 				res.send(try_buy_error);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/removeItem", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let item = req.query.item;
+
+	if (username == undefined || item == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
+		if (err) {
+			console.log(err);
+			res.send(unexpected_error);
+			return;
+		}
+		if (Object.keys(result).length == 0) {
+			res.send(username_not_exist);
+			return;
+		}
+		Object.keys(result).forEach(function (key) {
+			var row = result[key];
+			let items = []
+			for (let i in row.items.split(";")) {
+				if (i == item) {
+					continue;
+				}
+				items.push(i);
+			}
+			let newItems = items.join(";");
+			con.query(
+				"UPDATE players SET items = ? WHERE username = ?",
+				[newItems, username],
+				function (err, result) {
+					if (err) {
+						console.log(err);
+						res.send(unexpected_error);
+						return;
+					}
+					if (result.affectedRows == 0) {
+						res.send(username_not_exist);
+						return;
+					}
+					res.send(success);
+					return;
+				}
+			);
+		});
+	});
+});
+
+app.get("/removeAllItems", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+
+	if (username == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"UPDATE players SET items = '' WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (result.affectedRows == 0) {
+				res.send(username_not_exist);
 				return;
 			}
 			res.send(success);
