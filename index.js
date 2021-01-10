@@ -694,7 +694,7 @@ app.get("/declineFriendRequest", function (req, res) {
 				}
 				let newFriends = friend_requests.join(";");
 				con.query(
-					"UPDATE players SET friends = ? WHERE username = ?",
+					"UPDATE players SET friend_requests = ? WHERE username = ?",
 					[newFriends, username],
 					function (err, result) {
 						if (err) {
