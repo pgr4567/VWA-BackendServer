@@ -614,11 +614,42 @@ app.get("/acceptFriendRequest", function (req, res) {
 							res.send(username_not_exist);
 							return;
 						}
-						res.send(success);
-						return;
 					}
 				);
 			});
+		}
+	);
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[friend],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			username += ";"
+			con.query(
+				"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
+				[username, friend],
+				function (err, result) {
+					if (err) {
+						console.log(err);
+						res.send(unexpected_error);
+						return;
+					}
+					if (result.affectedRows == 0) {
+						res.send(username_not_exist);
+						return;
+					}
+					res.send(success);
+					return;
+				}
+			);
 		}
 	);
 });
@@ -769,8 +800,6 @@ app.get("/removeFriend", function (req, res) {
 							res.send(username_not_exist);
 							return;
 						}
-						res.send(success);
-						return;
 					}
 				);
 			});
