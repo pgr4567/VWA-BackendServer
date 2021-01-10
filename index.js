@@ -432,101 +432,6 @@ app.get("/setRank", function (req, res) {
 	);
 });
 
-app.get("/addFriend", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	let username = req.query.username;
-	let friend = req.query.friend;
-
-	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	friend += ";";
-
-	con.query(
-		"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
-		[friend, username],
-		function (err, result) {
-			if (err) {
-				console.log(err);
-				res.send(unexpected_error);
-				return;
-			}
-			if (result.affectedRows == 0) {
-				res.send(username_not_exist);
-				return;
-			}
-			res.send(success);
-			return;
-		}
-	);
-});
-
-app.get("/removeFriend", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	let username = req.query.username;
-	let friend = req.query.friend;
-
-	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	con.query(
-		"SELECT * FROM players WHERE username = ?",
-		[username],
-		function (err, result) {
-			if (err) {
-				console.log(err);
-				res.send(unexpected_error);
-				return;
-			}
-			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
-				return;
-			}
-			Object.keys(result).forEach(function (key) {
-				var row = result[key];
-				let friends = [];
-				let old = row.friends.split(";");
-				for (let i = 0; i < old.length; i++) {
-					if (old[i] == friend) {
-						continue;
-					}
-					friends.push(old[i]);
-				}
-				let newFriends = friends.join(";");
-				con.query(
-					"UPDATE players SET friends = ? WHERE username = ?",
-					[newFriends, username],
-					function (err, result) {
-						if (err) {
-							console.log(err);
-							res.send(unexpected_error);
-							return;
-						}
-						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
-							return;
-						}
-						res.send(success);
-						return;
-					}
-				);
-			});
-		}
-	);
-});
-
 app.get("/getFriends", function (req, res) {
 	if (req.query === undefined) {
 		res.send(unexpected_error);
@@ -556,6 +461,257 @@ app.get("/getFriends", function (req, res) {
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
 				res.send(row.friends);
+				return;
+			});
+		}
+	);
+});
+
+app.get("/addFriendRequest", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	username += ";";
+
+	con.query(
+		"UPDATE players SET friend_requests = CONCAT(IFNULL(friend_requests, ''), ?) WHERE username = ?",
+		[username, friend],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (result.affectedRows == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/removeFriendRequest", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[friend],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friend_requests = [];
+				let old = row.friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == username) {
+						continue;
+					}
+					friend_requests.push(old[i]);
+				}
+				let newFriends = friend_requests.join(";");
+				con.query(
+					"UPDATE players SET friends = ? WHERE username = ?",
+					[newFriends, friend],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
+});
+
+app.get("/acceptFriendRequest", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friends = [];
+				let old = row.friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == friend) {
+						continue;
+					}
+					friends.push(old[i]);
+				}
+				let newFriends = friends.join(";");
+				friend += ";"
+				con.query(
+					"UPDATE players SET friend_requests = ?, friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
+					[newFriends, friend, username],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
+});
+
+app.get("/declineFriendRequest", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+	let friend = req.query.friend;
+
+	if (username == undefined || friend == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friend_requests = [];
+				let old = row.friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == friend) {
+						continue;
+					}
+					friend_requests.push(old[i]);
+				}
+				let newFriends = friend_requests.join(";");
+				con.query(
+					"UPDATE players SET friends = ? WHERE username = ?",
+					[newFriends, username],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
+});
+
+app.get("/getFriendRequests", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+
+	if (username == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send(row.friend_requests);
 				return;
 			});
 		}
