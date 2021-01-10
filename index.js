@@ -632,7 +632,8 @@ app.get("/acceptFriendRequest", function (req, res) {
 				res.send(username_not_exist);
 				return;
 			}
-			username += ";"
+			username += ";";
+			friend = friend.replace(";", "");
 			con.query(
 				"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
 				[username, friend],
