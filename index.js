@@ -590,8 +590,6 @@ app.get("/removeFriendRequest", function (req, res) {
 							res.send(username_not_exist);
 							return;
 						}
-						res.send(success);
-						return;
 					}
 				);
 			});
