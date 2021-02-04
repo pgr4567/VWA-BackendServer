@@ -496,8 +496,23 @@ app.get("/addFriendRequest", function (req, res) {
 				res.send(username_not_exist);
 				return;
 			}
-			res.send(success);
-			return;
+			con.query(
+				"UPDATE players SET sent_friend_requests = CONCAT(IFNULL(sent_friend_requests, ''), ?) WHERE username = ?",
+				[friend, username],
+				function (err, result) {
+					if (err) {
+						console.log(err);
+						res.send(unexpected_error);
+						return;
+					}
+					if (result.affectedRows == 0) {
+						res.send(username_not_exist);
+						return;
+					}
+					res.send(success);
+					return;
+				}
+			);
 		}
 	);
 });
@@ -541,7 +556,7 @@ app.get("/removeFriendRequest", function (req, res) {
 				}
 				let newFriends = friend_requests.join(";");
 				con.query(
-					"UPDATE players SET friends = ? WHERE username = ?",
+					"UPDATE players SET friend_requests = ? WHERE username = ?",
 					[newFriends, friend],
 					function (err, result) {
 						if (err) {
@@ -634,23 +649,35 @@ app.get("/acceptFriendRequest", function (req, res) {
 			}
 			username += ";";
 			friend = friend.replace(";", "");
-			con.query(
-				"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
-				[username, friend],
-				function (err, result) {
-					if (err) {
-						console.log(err);
-						res.send(unexpected_error);
-						return;
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friends = [];
+				let old = row.sent_friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == username) {
+						continue;
 					}
-					if (result.affectedRows == 0) {
-						res.send(username_not_exist);
-						return;
-					}
-					res.send(success);
-					return;
+					friends.push(old[i]);
 				}
-			);
+				let newFriends = friends.join(";");
+				con.query(
+					"UPDATE players SET friends = CONCAT(IFNULL(friends, ''), ?), sent_friend_requests = ? WHERE username = ?",
+					[username, newFriends, friend],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
 		}
 	);
 });
@@ -713,6 +740,52 @@ app.get("/declineFriendRequest", function (req, res) {
 			});
 		}
 	);
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[friend],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			username += ";";
+			friend = friend.replace(";", "");
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friends = [];
+				let old = row.sent_friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == username) {
+						continue;
+					}
+					friends.push(old[i]);
+				}
+				let newFriends = friends.join(";");
+				con.query(
+					"UPDATE players SET sent_friend_requests = ? WHERE username = ?",
+					[newFriends, friend],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
 });
 
 app.get("/getFriendRequests", function (req, res) {
@@ -744,6 +817,40 @@ app.get("/getFriendRequests", function (req, res) {
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
 				res.send(row.friend_requests);
+				return;
+			});
+		}
+	);
+});
+
+app.get("/getSentFriendRequests", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let username = req.query.username;
+
+	if (username == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send(row.sent_friend_requests);
 				return;
 			});
 		}
