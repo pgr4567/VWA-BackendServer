@@ -2,6 +2,7 @@ const express = require("express");
 const mysql = require("mysql");
 const crypto = require("crypto");
 const fs = require("fs");
+const { resolveSoa } = require("dns");
 
 const app = express();
 const port = 3001;
@@ -481,25 +482,29 @@ app.get("/addFriendRequest", function (req, res) {
 		return;
 	}
 
-	let tempUsername = username + ";";
+	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
+		if (err) {
+			console.log(err);
+			res.send(unexpected_error);
+			return;
+		}
+		if (result.affectedRows == 0) {
+			res.send(username_not_exist);
+			return;
+		}
+		Object.keys(result).forEach(function (key) {
+			var row = result[key];
+			for (let f in row.sent_friend_requests) {
+				if (f === friend) {
+					res.send(unexpected_error);
+					return;
+				}
+			}
 
-	con.query(
-		"UPDATE players SET friend_requests = CONCAT(IFNULL(friend_requests, ''), ?) WHERE username = ?",
-		[tempUsername, friend],
-		function (err, result) {
-			if (err) {
-				console.log(err);
-				res.send(unexpected_error);
-				return;
-			}
-			if (result.affectedRows == 0) {
-				res.send(username_not_exist);
-				return;
-			}
-			friend += ";";
+			let tempUsername = username + ";";
 			con.query(
-				"UPDATE players SET sent_friend_requests = CONCAT(IFNULL(sent_friend_requests, ''), ?) WHERE username = ?",
-				[friend, username],
+				"UPDATE players SET friend_requests = CONCAT(IFNULL(friend_requests, ''), ?) WHERE username = ?",
+				[tempUsername, friend],
 				function (err, result) {
 					if (err) {
 						console.log(err);
@@ -510,12 +515,28 @@ app.get("/addFriendRequest", function (req, res) {
 						res.send(username_not_exist);
 						return;
 					}
-					res.send(success);
-					return;
+					friend += ";";
+					con.query(
+						"UPDATE players SET sent_friend_requests = CONCAT(IFNULL(sent_friend_requests, ''), ?) WHERE username = ?",
+						[friend, username],
+						function (err, result) {
+							if (err) {
+								console.log(err);
+								res.send(unexpected_error);
+								return;
+							}
+							if (result.affectedRows == 0) {
+								res.send(username_not_exist);
+								return;
+							}
+							res.send(success);
+							return;
+						}
+					);
 				}
 			);
-		}
-	);
+		});
+	});
 });
 
 app.get("/removeFriendRequest", function (req, res) {
