@@ -576,6 +576,50 @@ app.get("/removeFriendRequest", function (req, res) {
 			});
 		}
 	);
+	con.query(
+		"SELECT * FROM players WHERE username = ?",
+		[username],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				let friends = [];
+				let old = row.sent_friend_requests.split(";");
+				for (let i = 0; i < old.length; i++) {
+					if (old[i] == friend) {
+						continue;
+					}
+					friends.push(old[i]);
+				}
+				let newFriends = friends.join(";");
+				con.query(
+					"UPDATE players SET sent_friend_requests = ? WHERE username = ?",
+					[newFriends, username],
+					function (err, result) {
+						if (err) {
+							console.log(err);
+							res.send(unexpected_error);
+							return;
+						}
+						if (result.affectedRows == 0) {
+							res.send(username_not_exist);
+							return;
+						}
+						res.send(success);
+						return;
+					}
+				);
+			});
+		}
+	);
 });
 
 app.get("/acceptFriendRequest", function (req, res) {
