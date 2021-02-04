@@ -481,11 +481,11 @@ app.get("/addFriendRequest", function (req, res) {
 		return;
 	}
 
-	username += ";";
+	let tempUsername = username + ";";
 
 	con.query(
 		"UPDATE players SET friend_requests = CONCAT(IFNULL(friend_requests, ''), ?) WHERE username = ?",
-		[username, friend],
+		[tempUsername, friend],
 		function (err, result) {
 			if (err) {
 				console.log(err);
@@ -496,6 +496,7 @@ app.get("/addFriendRequest", function (req, res) {
 				res.send(username_not_exist);
 				return;
 			}
+			friend += ";";
 			con.query(
 				"UPDATE players SET sent_friend_requests = CONCAT(IFNULL(sent_friend_requests, ''), ?) WHERE username = ?",
 				[friend, username],
@@ -615,10 +616,10 @@ app.get("/acceptFriendRequest", function (req, res) {
 					friends.push(old[i]);
 				}
 				let newFriends = friends.join(";");
-				friend += ";"
+				let tempfriend = friend + ";";
 				con.query(
 					"UPDATE players SET friend_requests = ?, friends = CONCAT(IFNULL(friends, ''), ?) WHERE username = ?",
-					[newFriends, friend, username],
+					[newFriends, tempfriend, username],
 					function (err, result) {
 						if (err) {
 							console.log(err);
