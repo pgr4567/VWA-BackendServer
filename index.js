@@ -810,7 +810,6 @@ app.get("/declineFriendRequest", function (req, res) {
 									res.send(username_not_exist);
 									return;
 								}
-								username += ";";
 								friend = friend.replace(";", "");
 								Object.keys(result).forEach(function (key) {
 									var row = result[key];
