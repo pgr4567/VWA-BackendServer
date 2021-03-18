@@ -1019,6 +1019,131 @@ app.get("/removeFriend", function (req, res) {
 	);
 });
 
+app.get("/addRank", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let name = req.query.name;
+	let permissions = req.query.permissions;
+
+	if (name == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+	if (permissions == undefined || permissions == null) {
+		permissions = "";
+	}
+
+	con.query(
+		"INSERT INTO ranks (name, permissions) VALUES (?, ?)",
+		[name, permissions],
+		function (err) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/changeRank", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let id = req.query.id;
+	let name = req.query.name;
+	let permissions = req.query.permissions;
+
+	if (id == undefined || name == undefined || permissions == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"UPDATE ranks SET name = ?, permissions = ? WHERE id = ?",
+		[name, permissions, id],
+		function (err) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/removeRank", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let id = req.query.id;
+
+	if (id == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"DELETE FROM ranks WHERE id = ?",
+		[id],
+		function (err) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			res.send(success);
+			return;
+		}
+	);
+});
+
+app.get("/getRankInfo", function (req, res) {
+	if (req.query === undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	let id = req.query.id;
+
+	if (id == undefined) {
+		res.send(unexpected_error);
+		return;
+	}
+
+	con.query(
+		"SELECT * FROM ranks WHERE id = ?",
+		[id],
+		function (err, result) {
+			if (err) {
+				console.log(err);
+				res.send(unexpected_error);
+				return;
+			}
+			if (Object.keys(result).length == 0) {
+				res.send(username_not_exist);
+				return;
+			}
+			Object.keys(result).forEach(function (key) {
+				var row = result[key];
+				res.send(row.id + "|" + row.name + "|" + row.permissions);
+				return;
+			});
+		}
+	);
+});
+
 app.listen(port, "0.0.0.0", () => {
 	console.log(`BackendServer listening on port ${port}.`);
 });
