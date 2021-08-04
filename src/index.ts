@@ -1,8 +1,8 @@
-const express = require("express");
-const mysql = require("mysql");
-const crypto = require("crypto");
-const fs = require("fs");
-const { resolveSoa } = require("dns");
+import express, { Response, Request } from "express";
+import mysql from "mysql";
+import crypto from "crypto";
+import fs from "fs";
+import bcrypt from "bcryptjs";
 
 const app = express();
 const port = 3001;
@@ -12,28 +12,37 @@ const username_not_exist = "ERROR: USERNAME DOES NOT EXIST";
 const session_update_error = "ERROR: SESSION TOKEN COULD NOT BE UPDATED";
 const session_time_invalid = "ERROR: SESSION TIME IS INVALID";
 const unexpected_error = "UNEXPECTED ERROR";
+const rg_username_exist = "ERROR: USERNAME EXISTS";
+const lg_error = "ERROR: USERNAME OR PASSWORD INCORRECT";
+const invalid_username_password = "ERROR: INVALID USERNAME OR PASSWORD";
 const max_session_time_in_hours = 24;
+const saltRounds = 10;
 
-let connParams = JSON.parse(fs.readFileSync("./conn.json"));
-var con = mysql.createConnection({
+let connParams = JSON.parse(fs.readFileSync("./conn.json").toString());
+let con = mysql.createConnection({
 	host: connParams.host,
 	user: connParams.user,
 	password: connParams.password,
 	database: connParams.database,
 });
 
-app.get("/tryBuy", function (req, res) {
+function checkQuery(req: Request, res: Response, next: Function) {
 	if (req.query === undefined) {
-		res.send(unexpected_error);
+		res.status(500).send(unexpected_error);
 		return;
 	}
+	next();
+}
 
+app.use(checkQuery);
+
+app.get("/tryBuy", function (req, res) {
 	let username = req.query.username;
 	let item = req.query.item;
-	let price = parseInt(req.query.price);
+	let price = parseInt(req.query.price as string);
 
 	if (username == undefined || item == undefined || price == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -45,30 +54,25 @@ app.get("/tryBuy", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (result.affectedRows == 0) {
-				res.send(try_buy_error);
+				res.status(500).send(try_buy_error);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/removeItem", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let item = req.query.item;
 
 	if (username == undefined || item == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -78,11 +82,11 @@ app.get("/removeItem", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
@@ -102,14 +106,14 @@ app.get("/removeItem", function (req, res) {
 					function (err, result) {
 						if (err) {
 							console.log(err);
-							res.send(unexpected_error);
+							res.status(500).send(unexpected_error);
 							return;
 						}
 						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
+							res.status(404).send(username_not_exist);
 							return;
 						}
-						res.send(success);
+						res.status(200).send(success);
 						return;
 					}
 				);
@@ -119,15 +123,10 @@ app.get("/removeItem", function (req, res) {
 });
 
 app.get("/removeAllItems", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -137,30 +136,25 @@ app.get("/removeAllItems", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (result.affectedRows == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/addMoney", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let amount = req.query.amount;
 
 	if (username == undefined || amount == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -170,29 +164,24 @@ app.get("/addMoney", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (result.affectedRows == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/getInventory", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -202,16 +191,16 @@ app.get("/getInventory", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.items);
+				res.status(200).send(row.items);
 				return;
 			});
 		}
@@ -219,15 +208,10 @@ app.get("/getInventory", function (req, res) {
 });
 
 app.get("/getMoney", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -237,16 +221,16 @@ app.get("/getMoney", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send("$" + row.money);
+				res.status(200).send("$" + row.money);
 				return;
 			});
 		}
@@ -254,15 +238,10 @@ app.get("/getMoney", function (req, res) {
 });
 
 app.get("/getSessionToken", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -272,20 +251,20 @@ app.get("/getSessionToken", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
 				if (isValidSessionTime(row.session_time)) {
-					res.send(row.session);
+					res.status(200).send(row.session);
 					return;
 				} else {
-					res.send(session_time_invalid);
+					res.status(403).send(session_time_invalid);
 					return;
 				}
 			});
@@ -294,15 +273,10 @@ app.get("/getSessionToken", function (req, res) {
 });
 
 app.get("/getSessionTokenTime", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -312,16 +286,16 @@ app.get("/getSessionTokenTime", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.session_time);
+				res.status(200).send(row.session_time);
 				return;
 			});
 		}
@@ -329,15 +303,10 @@ app.get("/getSessionTokenTime", function (req, res) {
 });
 
 app.get("/generateSessionToken", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -348,33 +317,24 @@ app.get("/generateSessionToken", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (result.affectedRows == 0) {
-				res.send(session_update_error);
+				res.status(500).send(session_update_error);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
-app.get("/maxSessionTime", function (req, res) {
-	res.send("T" + max_session_time_in_hours);
-});
-
 app.get("/getRank", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -384,16 +344,16 @@ app.get("/getRank", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send("R" + row.rank);
+				res.status(200).send("R" + row.rank);
 				return;
 			});
 		}
@@ -401,16 +361,11 @@ app.get("/getRank", function (req, res) {
 });
 
 app.get("/setRank", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let rank = req.query.rank;
 
 	if (username == undefined || rank == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -420,29 +375,24 @@ app.get("/setRank", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (result.affectedRows == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/getFriends", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -452,16 +402,16 @@ app.get("/getFriends", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.friends);
+				res.status(200).send(row.friends);
 				return;
 			});
 		}
@@ -469,34 +419,29 @@ app.get("/getFriends", function (req, res) {
 });
 
 app.get("/addFriendRequest", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let friend = req.query.friend;
 
 	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
 	con.query("SELECT * FROM players WHERE username = ?", [username], function (err, result) {
 		if (err) {
 			console.log(err);
-			res.send(unexpected_error);
+			res.status(500).send(unexpected_error);
 			return;
 		}
 		if (result.affectedRows == 0) {
-			res.send(username_not_exist);
+			res.status(404).send(username_not_exist);
 			return;
 		}
 		Object.keys(result).forEach(function (key) {
 			var row = result[key];
 			for (let f in row.sent_friend_requests) {
 				if (f === friend) {
-					res.send(unexpected_error);
+					res.status(500).send(unexpected_error);
 					return;
 				}
 			}
@@ -508,11 +453,11 @@ app.get("/addFriendRequest", function (req, res) {
 				function (err, result) {
 					if (err) {
 						console.log(err);
-						res.send(unexpected_error);
+						res.status(500).send(unexpected_error);
 						return;
 					}
 					if (result.affectedRows == 0) {
-						res.send(username_not_exist);
+						res.status(404).send(username_not_exist);
 						return;
 					}
 					friend += ";";
@@ -522,14 +467,14 @@ app.get("/addFriendRequest", function (req, res) {
 						function (err, result) {
 							if (err) {
 								console.log(err);
-								res.send(unexpected_error);
+								res.status(500).send(unexpected_error);
 								return;
 							}
 							if (result.affectedRows == 0) {
-								res.send(username_not_exist);
+								res.status(404).send(username_not_exist);
 								return;
 							}
-							res.send(success);
+							res.status(200).send(success);
 							return;
 						}
 					);
@@ -540,16 +485,11 @@ app.get("/addFriendRequest", function (req, res) {
 });
 
 app.get("/removeFriendRequest", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let friend = req.query.friend;
 
 	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -559,11 +499,11 @@ app.get("/removeFriendRequest", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
@@ -583,11 +523,11 @@ app.get("/removeFriendRequest", function (req, res) {
 					function (err, result) {
 						if (err) {
 							console.log(err);
-							res.send(unexpected_error);
+							res.status(500).send(unexpected_error);
 							return;
 						}
 						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
+							res.status(404).send(username_not_exist);
 							return;
 						}
 						con.query(
@@ -596,11 +536,11 @@ app.get("/removeFriendRequest", function (req, res) {
 							function (err, result) {
 								if (err) {
 									console.log(err);
-									res.send(unexpected_error);
+									res.status(500).send(unexpected_error);
 									return;
 								}
 								if (Object.keys(result).length == 0) {
-									res.send(username_not_exist);
+									res.status(404).send(username_not_exist);
 									return;
 								}
 								Object.keys(result).forEach(function (key) {
@@ -620,14 +560,14 @@ app.get("/removeFriendRequest", function (req, res) {
 										function (err, result) {
 											if (err) {
 												console.log(err);
-												res.send(unexpected_error);
+												res.status(500).send(unexpected_error);
 												return;
 											}
 											if (result.affectedRows == 0) {
-												res.send(username_not_exist);
+												res.status(404).send(username_not_exist);
 												return;
 											}
-											res.send(success);
+											res.status(200).send(success);
 											return;
 										}
 									);
@@ -642,16 +582,11 @@ app.get("/removeFriendRequest", function (req, res) {
 });
 
 app.get("/acceptFriendRequest", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	let username = req.query.username;
-	let friend = req.query.friend;
+	let username = req.query.username as string;
+	let friend = req.query.friend as string;
 
 	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -661,11 +596,11 @@ app.get("/acceptFriendRequest", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
@@ -686,11 +621,11 @@ app.get("/acceptFriendRequest", function (req, res) {
 					function (err, result) {
 						if (err) {
 							console.log(err);
-							res.send(unexpected_error);
+							res.status(500).send(unexpected_error);
 							return;
 						}
 						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
+							res.status(404).send(username_not_exist);
 							return;
 						}
 						con.query(
@@ -699,11 +634,11 @@ app.get("/acceptFriendRequest", function (req, res) {
 							function (err, result) {
 								if (err) {
 									console.log(err);
-									res.send(unexpected_error);
+									res.status(500).send(unexpected_error);
 									return;
 								}
 								if (Object.keys(result).length == 0) {
-									res.send(username_not_exist);
+									res.status(404).send(username_not_exist);
 									return;
 								}
 								friend = friend.replace(";", "");
@@ -724,14 +659,14 @@ app.get("/acceptFriendRequest", function (req, res) {
 										function (err, result) {
 											if (err) {
 												console.log(err);
-												res.send(unexpected_error);
+												res.status(500).send(unexpected_error);
 												return;
 											}
 											if (result.affectedRows == 0) {
-												res.send(username_not_exist);
+												res.status(404).send(username_not_exist);
 												return;
 											}
-											res.send(success);
+											res.status(200).send(success);
 											return;
 										}
 									);
@@ -746,16 +681,11 @@ app.get("/acceptFriendRequest", function (req, res) {
 });
 
 app.get("/declineFriendRequest", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
-	let username = req.query.username;
-	let friend = req.query.friend;
+	let username = req.query.username as string;
+	let friend = req.query.friend as string;
 
 	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -765,11 +695,11 @@ app.get("/declineFriendRequest", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
@@ -789,11 +719,11 @@ app.get("/declineFriendRequest", function (req, res) {
 					function (err, result) {
 						if (err) {
 							console.log(err);
-							res.send(unexpected_error);
+							res.status(500).send(unexpected_error);
 							return;
 						}
 						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
+							res.status(404).send(username_not_exist);
 							return;
 						}
 						con.query(
@@ -802,11 +732,11 @@ app.get("/declineFriendRequest", function (req, res) {
 							function (err, result) {
 								if (err) {
 									console.log(err);
-									res.send(unexpected_error);
+									res.status(500).send(unexpected_error);
 									return;
 								}
 								if (Object.keys(result).length == 0) {
-									res.send(username_not_exist);
+									res.status(404).send(username_not_exist);
 									return;
 								}
 								friend = friend.replace(";", "");
@@ -827,14 +757,14 @@ app.get("/declineFriendRequest", function (req, res) {
 										function (err, result) {
 											if (err) {
 												console.log(err);
-												res.send(unexpected_error);
+												res.status(500).send(unexpected_error);
 												return;
 											}
 											if (result.affectedRows == 0) {
-												res.send(username_not_exist);
+												res.status(404).send(username_not_exist);
 												return;
 											}
-											res.send(success);
+											res.status(200).send(success);
 											return;
 										}
 									);
@@ -849,15 +779,10 @@ app.get("/declineFriendRequest", function (req, res) {
 });
 
 app.get("/getFriendRequests", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -867,16 +792,16 @@ app.get("/getFriendRequests", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.friend_requests);
+				res.status(200).send(row.friend_requests);
 				return;
 			});
 		}
@@ -884,15 +809,10 @@ app.get("/getFriendRequests", function (req, res) {
 });
 
 app.get("/getSentFriendRequests", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 
 	if (username == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 	con.query(
@@ -901,16 +821,16 @@ app.get("/getSentFriendRequests", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.sent_friend_requests);
+				res.status(200).send(row.sent_friend_requests);
 				return;
 			});
 		}
@@ -918,16 +838,11 @@ app.get("/getSentFriendRequests", function (req, res) {
 });
 
 app.get("/removeFriend", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let username = req.query.username;
 	let friend = req.query.friend;
 
 	if (username == undefined || friend == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -937,11 +852,11 @@ app.get("/removeFriend", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(404).send(username_not_exist);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
@@ -961,11 +876,11 @@ app.get("/removeFriend", function (req, res) {
 					function (err, result) {
 						if (err) {
 							console.log(err);
-							res.send(unexpected_error);
+							res.status(500).send(unexpected_error);
 							return;
 						}
 						if (result.affectedRows == 0) {
-							res.send(username_not_exist);
+							res.status(404).send(username_not_exist);
 							return;
 						}
 						con.query(
@@ -974,11 +889,11 @@ app.get("/removeFriend", function (req, res) {
 							function (err, result) {
 								if (err) {
 									console.log(err);
-									res.send(unexpected_error);
+									res.status(500).send(unexpected_error);
 									return;
 								}
 								if (Object.keys(result).length == 0) {
-									res.send(username_not_exist);
+									res.status(404).send(username_not_exist);
 									return;
 								}
 								Object.keys(result).forEach(function (key) {
@@ -998,14 +913,14 @@ app.get("/removeFriend", function (req, res) {
 										function (err, result) {
 											if (err) {
 												console.log(err);
-												res.send(unexpected_error);
+												res.status(500).send(unexpected_error);
 												return;
 											}
 											if (result.affectedRows == 0) {
-												res.send(username_not_exist);
+												res.status(404).send(username_not_exist);
 												return;
 											}
-											res.send(success);
+											res.status(200).send(success);
 											return;
 										}
 									);
@@ -1020,16 +935,11 @@ app.get("/removeFriend", function (req, res) {
 });
 
 app.get("/addRank", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let name = req.query.name;
 	let permissions = req.query.permissions;
 
 	if (name == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 	if (permissions == undefined || permissions == null) {
@@ -1042,27 +952,22 @@ app.get("/addRank", function (req, res) {
 		function (err) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/changeRank", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let id = req.query.id;
 	let name = req.query.name;
 	let permissions = req.query.permissions;
 
 	if (id == undefined || name == undefined || permissions == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -1072,25 +977,20 @@ app.get("/changeRank", function (req, res) {
 		function (err) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/removeRank", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let id = req.query.id;
 
 	if (id == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -1100,25 +1000,20 @@ app.get("/removeRank", function (req, res) {
 		function (err) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
-			res.send(success);
+			res.status(200).send(success);
 			return;
 		}
 	);
 });
 
 app.get("/getRankInfo", function (req, res) {
-	if (req.query === undefined) {
-		res.send(unexpected_error);
-		return;
-	}
-
 	let id = req.query.id;
 
 	if (id == undefined) {
-		res.send(unexpected_error);
+		res.status(400).send(unexpected_error);
 		return;
 	}
 
@@ -1128,20 +1023,111 @@ app.get("/getRankInfo", function (req, res) {
 		function (err, result) {
 			if (err) {
 				console.log(err);
-				res.send(unexpected_error);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			if (Object.keys(result).length == 0) {
-				res.send(username_not_exist);
+				res.status(500).send(unexpected_error);
 				return;
 			}
 			Object.keys(result).forEach(function (key) {
 				var row = result[key];
-				res.send(row.id + "|" + row.name + "|" + row.permissions);
+				res.status(200).send(row.id + "|" + row.name + "|" + row.permissions);
 				return;
 			});
 		}
 	);
+});
+
+app.get("/register", function (req, res) {
+	let username = req.query.username as string;
+	let password = req.query.password as string;
+
+	if (username == undefined || password == undefined) {
+		res.status(400).send(unexpected_error);
+		return;
+	}
+	if (username.trim() == "" || password.trim() == "" || username.length < 2 || password.length < 4 || username == "Server") {
+		res.status(400).send(invalid_username_password);
+		return;
+	}
+
+	con.query("SELECT * FROM players WHERE username = ?", [username], function (
+		err,
+		result
+	) {
+		if (err) {
+			console.log(err);
+			res.status(500).send(unexpected_error);
+			return;
+		}
+		if (Object.keys(result).length > 0) {
+			res.status(400).send(rg_username_exist);
+			return;
+		}
+		bcrypt.hash(password, saltRounds, function (err, hash) {
+			if (err) {
+				console.log(err);
+				res.status(500).send(unexpected_error);
+				return;
+			}
+			con.query(
+				"INSERT INTO players (username, password) VALUES (?, ?)",
+				[username, hash],
+				function (err) {
+					if (err) {
+						console.log(err);
+						res.status(500).send(unexpected_error);
+						return;
+					}
+					res.status(200).send(success);
+					return;
+				}
+			);
+		});
+	});
+});
+
+app.get("/login", function (req, res) {
+	let username = req.query.username as string;
+	let password = req.query.password as string;
+
+	if (username == undefined || password == undefined) {
+		res.status(400).send(unexpected_error);
+		return;
+	}
+
+	con.query("SELECT * FROM players WHERE username = ?", [username], function (
+		err,
+		result
+	) {
+		if (err) {
+			console.log(err);
+			res.status(500).send(unexpected_error);
+			return;
+		}
+		if (Object.keys(result).length == 0) {
+			res.status(404).send(lg_error);
+			return;
+		}
+		Object.keys(result).forEach(function (key) {
+			var row = result[key];
+			bcrypt.compare(password, row.password, function (err, result) {
+				if (err) {
+					console.log(err);
+					res.status(500).send(unexpected_error);
+					return;
+				}
+				if (result) {
+					res.status(200).send(success);
+					return;
+				} else {
+					res.status(403).send(lg_error);
+					return;
+				}
+			});
+		});
+	});
 });
 
 app.listen(port, "0.0.0.0", () => {
@@ -1152,7 +1138,7 @@ function generateSessionToken() {
 	return crypto.randomBytes(24).toString("base64");
 }
 
-function isValidSessionTime(date) {
+function isValidSessionTime(date: any) {
 	const time = 1000 * 60 * 60 * max_session_time_in_hours;
 	const lastTime = Date.now() - time;
 
