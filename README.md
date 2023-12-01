@@ -1,2 +1,6 @@
 # VWA-BackendServer
-Der Backend-Server, der Dinge mit Authentication regelt -> Sessions, Shop, Geld, etc..
+Der Backend-Server für mein [VWA-Spiel](https://github.com/pgr4567/VWA). 
+
+## Architektur
+Dieser Server war für den Spielclient nicht erreichbar und wurde intern vom Spielserver verwendet, um die Spieler zu authentifizieren und diesen Code nicht in der gemeinsamen Server-Client-Codebasis zu verteilen.
+Hinter der Firewall greift dieser Server auf die Datenbank zu und verifiziert alle Events, die eine Authentifizierung des Spielers benötigen.
